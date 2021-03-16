@@ -4,9 +4,58 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+import random
+import string
+import time
+import crawler.utils.proxy as proxy
+from fake_useragent import UserAgent
 
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
+
+
+class UserAgentMiddleware(object):
+    """ 设置随机的用户代理 """
+
+    def process_request(self, request, spider):
+        ua = UserAgent()
+        request.headers["User-Agent"] = ua.random
+
+
+class CookiesMiddleware(object):
+    """ 设置随机的bid """
+
+    def process_request(self, request, spider):
+        bid = "".join(random.sample(string.ascii_letters + string.digits, 11))
+        request.cookies = {
+            "bid": bid,
+        }
+
+
+class ProxyMiddleware(object):
+    """
+    使用后台的代理服务
+    """
+
+    def process_request(self, request, spider):
+        request.meta["download_timeout"] = 10
+        request.meta["proxy"] = "http://" + proxy.get()
+
+    def process_exception(self, request, exception, spider):
+        # 增加等待时间
+        spider.logger.error(
+            "raise exception: {}, url: {}, headers: {}, meta: {}".format(
+                exception,
+                request.url,
+                request.headers,
+                request.meta,
+            )
+        )
+        time.sleep(5)
+        proxy.delete(request.meta["proxy"].split("//")[-1])
+        request.meta["proxy"] = "http://" + proxy.get()
+
+        return request
 
 
 class CrawlerSpiderMiddleware:
@@ -53,7 +102,7 @@ class CrawlerSpiderMiddleware:
             yield r
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.name)
+        spider.logger.info("Spider opened: %s" % spider.name)
 
 
 class CrawlerDownloaderMiddleware:
@@ -100,4 +149,4 @@ class CrawlerDownloaderMiddleware:
         pass
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.name)
+        spider.logger.info("Spider opened: %s" % spider.name)
