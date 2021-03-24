@@ -162,6 +162,7 @@ class MovieXpathHelper(object):
         """
         if len(intro) > MAX_INTRO_LEN:
             return intro[: MAX_INTRO_LEN - 3] + "..."
+        return intro
 
     def get_intro(self, response):
         intro = "".join(
@@ -216,6 +217,11 @@ class MovieItem(Item):
     main_cast = Field()
     photos = Field()
     xph = MovieXpathHelper()
+
+    def check_ok(self):
+        if self["title"] is None or len(self["title"]) == 0:
+            return False
+        return True
 
 
 if __name__ == "__main__":

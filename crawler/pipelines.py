@@ -77,4 +77,4 @@ class CrawlerPipeline:
         _sql = "INSERT INTO movie ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {}".format(
             fields, placeholder, _update
         )
-        self.db.execute(_sql, tuple(i.strip() for i in values))
+        self.db.execute(_sql, tuple(i.strip() if i is not None else "" for i in values))

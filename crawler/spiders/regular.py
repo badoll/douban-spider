@@ -51,12 +51,14 @@ class MovieIDSpider(scrapy.Spider):
             item = NowplayingMovieItem()
             item["douban_id"] = douban_id
             yield item
-
-        self.logger.debug(
-            "crawl succ, url:{}, headers: {}, meta: {}, ids: {}".format(
-                response.url, "headers", response.request.meta, douban_id_list
+        if len(douban_id_list) == 0:
+            yield Request(
+                nowplaying_url,
+                callback=self.parse_nowplaying,
+                errback=self.errback,
+                dont_filter=True,
             )
-        )
+        self.log("nowplaying", douban_id_list, response)
 
     def parse_upcoming(self, response):
         # https://movie.douban.com/subject/34458727/
@@ -70,12 +72,14 @@ class MovieIDSpider(scrapy.Spider):
             item = UpcomingMovieItem()
             item["douban_id"] = douban_id
             yield item
-
-        self.logger.debug(
-            "crawl succ, url:{}, headers: {}, meta: {}, ids: {}".format(
-                response.url, "headers", response.request.meta, douban_id_list
+        if len(douban_id_list) == 0:
+            yield Request(
+                upcoming_url,
+                callback=self.parse_upcoming,
+                errback=self.errback,
+                dont_filter=True,
             )
-        )
+        self.log("upcoming", douban_id_list, response)
 
     def parse_ranking(self, response):
         # https://movie.douban.com/subject/34458727/
@@ -102,14 +106,36 @@ class MovieIDSpider(scrapy.Spider):
             item["douban_id"] = douban_id
             yield item
 
-        self.logger.debug(
-            "crawl succ, url:{}, headers: {}, meta: {}, ids: {}".format(
-                response.url,
-                "headers",
-                response.request.meta,
-                newrelease_list + top_list,
+        if len(newrelease_list) == 0 or len(top_list) == 0:
+            yield Request(
+                ranking_url,
+                callback=self.parse_ranking,
+                errback=self.errback,
+                dont_filter=True,
             )
-        )
+        self.log("newrelease", newrelease_list, response)
+        self.log("weeklytop", top_list, response)
+
+    def log(self, task, id_list, response):
+        if len(id_list) == 0:
+            self.logger.error(
+                "crawl error, url:{}, task:{}, headers: {}, meta: {}".format(
+                    response.url,
+                    task,
+                    "headers",
+                    response.request.meta,
+                )
+            )
+        else:
+            self.logger.debug(
+                "crawl succ, url:{}, task: {}, headers: {}, meta: {}, ids: {}".format(
+                    response.url,
+                    task,
+                    "headers",
+                    response.request.meta,
+                    id_list,
+                )
+            )
 
     def errback(self, failure):
         # log all failures

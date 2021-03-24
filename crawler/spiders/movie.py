@@ -40,38 +40,33 @@ class MovieIDSpider(scrapy.Spider):
         item["intro"] = item.xph.get_intro(response)
         item["main_cast"] = item.xph.get_main_cast(response)
         item["photos"] = item.xph.get_photos(response)
-        self.logger.debug(
-            "crawl succ, url:{}, headers: {}, meta: {}".format(
+        if not item.check_ok():
+            """
+            错误页面
+            <script>var d=[navigator.platform,navigator.userAgent,navigator.vendor].join("|");window.location.href="https://sec.douban.com/a?c=5a1f34&d="+d+"&r=https%3A%2F%2Fmovie.douban.com%2Fsubject%2F1792928%2F&k=V%2FZ7R68PnQJxfvod9%2Fvy5J9B9iLQb9cO5isJzpXlqQo";</script>
+            """
+            yield Request(
                 response.url,
-                "headers",
-                response.request.meta,
+                callback=self.parse,
+                errback=self.errback,
+                dont_filter=True,
             )
-        )
-        self._crawl_done(item["douban_id"])
-
-        yield item
-
-    def errback(self, failure):
-        # log all failures
-        self.logger.error("errback -> {}".format(repr(failure)))
-
-        # in case you want to do something special for some errors,
-        # you may need the failure's type:
-
-        if failure.check(HttpError):
-            # these exceptions come from HttpError spider middleware
-            # you can get the non-200 response
-            response = failure.value.response
-            self.logger.error("errback -> HttpError on {}".format(response.url))
-
-        elif failure.check(DNSLookupError):
-            # this is the original request
-            request = failure.request
-            self.logger.error("errback -> DNSLookupError on {}".format(request.url))
-
-        elif failure.check(TimeoutError, TCPTimedOutError):
-            request = failure.request
-            self.logger.error("errback -> TimeoutError on {}".format(request.url))
+            self.logger.error(
+                "crawl error, url:{}, headers: {}, meta: {}, text: {}".format(
+                    response.url,
+                    "headers",
+                    response.request.meta,
+                    str(response.text).replace("\n", "").strip(),
+                )
+            )
+        else:
+            self.logger.debug(
+                "crawl succ, url:{}, headers: {}, meta: {}".format(
+                    response.url, "headers", response.request.meta
+                )
+            )
+            self._crawl_done(item["douban_id"])
+            yield item
 
     def _fetch_urls(self):
         _sql = "select douban_id from movie_to_crawl where finished = 0"
@@ -96,3 +91,25 @@ class MovieIDSpider(scrapy.Spider):
     def _crawl_done(self, douban_id):
         _sql = "update movie_to_crawl set finished = 1 where douban_id = %s"
         self.db.execute(_sql, [douban_id])
+
+    def errback(self, failure):
+        # log all failures
+        self.logger.error("errback -> {}".format(repr(failure)))
+
+        # in case you want to do something special for some errors,
+        # you may need the failure's type:
+
+        if failure.check(HttpError):
+            # these exceptions come from HttpError spider middleware
+            # you can get the non-200 response
+            response = failure.value.response
+            self.logger.error("errback -> HttpError on {}".format(response.url))
+
+        elif failure.check(DNSLookupError):
+            # this is the original request
+            request = failure.request
+            self.logger.error("errback -> DNSLookupError on {}".format(request.url))
+
+        elif failure.check(TimeoutError, TCPTimedOutError):
+            request = failure.request
+            self.logger.error("errback -> TimeoutError on {}".format(request.url))
