@@ -136,6 +136,7 @@ class MovieXpathHelper(object):
             "".join(response.xpath(self.runtime_extra).extract())
             .replace("\n", "")
             .replace(" ", "")
+            .replace("\t", "")
             .replace(",", "")
         )
         if len(extra) == 0:
@@ -166,11 +167,11 @@ class MovieXpathHelper(object):
 
     def get_intro(self, response):
         intro = "".join(
-            i.replace("\n", "").replace(" ", "")
+            i.replace("\n", "").replace(" ", "").replace("\t", "")
             for i in response.xpath(self.intro).extract()
         )
         intro_all = "".join(
-            i.replace("\n", "").replace(" ", "")
+            i.replace("\n", "").replace(" ", "").replace("\t", "")
             for i in response.xpath(self.intro_all).extract()
         )
         if len(intro_all) == 0:
